@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/style.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tauri App</title>
+    <script type="module" src="/src/main.ts" defer></script>
+    <style>
+      .logo.vite:hover {
+        filter: drop-shadow(0 0 2em #747bff);
+      }
+
+      .logo.typescript:hover {
+        filter: drop-shadow(0 0 2em #2d79c7);
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>Novel Downloader</h1>
+
+      <div class="row">
+        <div>
+          <input id="url-input" placeholder="Enter something..." />
+          <button type="button" onclick="search()">Search</button>
+        </div>
+      </div>
+      
+      <div class="row">
+          <input class="rank-time" type="radio" name="rank-time" value="daily" />日間&nbsp;&nbsp;
+          <input class="rank-time" type="radio" name="rank-time" value="weekly" />週間&nbsp;&nbsp;
+          <input class="rank-time" type="radio" name="rank-time" value="monthly" checked/>月間&nbsp;&nbsp;
+          <input class="rank-time" type="radio" name="rank-time" value="yearly" />年間&nbsp;&nbsp;
+          <input class="rank-time" type="radio" name="rank-time" value="entire" />累計&nbsp;&nbsp;
+      </div>
+
+      <div class="row">
+        <div>
+          <button class="rank-button" type="button" value="all" onclick="fetch_ranklist(value)">All</button>
+          <button class="rank-button" type="button" value="fantasy" onclick="fetch_ranklist(value)">異世界ファンタジ</button>
+          <button class="rank-button" type="button" value="action" onclick="fetch_ranklist(value)">現代ファンタジー</button>
+          <button class="rank-button" type="button" value="sf" onclick="fetch_ranklist(value)">SF</button>
+          <button class="rank-button" type="button" value="love_story" onclick="fetch_ranklist(value)">恋愛</button>
+          <button class="rank-button" type="button" value="romance" onclick="fetch_ranklist(value)">ラブコメ</button>
+          <button class="rank-button" type="button" value="drama" onclick="fetch_ranklist(value)">現代ドラマ</button>
+          <button class="rank-button" type="button" value="horror" onclick="fetch_ranklist(value)">ホラー</button>
+          <button class="rank-button" type="button" value="mystery" onclick="fetch_ranklist(value)">ミステリー</button>
+          <button class="rank-button" type="button" value="nonfiction" onclick="fetch_ranklist(value)">エッセイ・ノンフィクション</button>
+          <button class="rank-button" type="button" value="history" onclick="fetch_ranklist(value)">歴史・時代・伝奇</button>
+          <button class="rank-button" type="button" value="criticism" onclick="fetch_ranklist(value)">創作論・評論</button>
+          <button class="rank-button" type="button" value="others" onclick="fetch_ranklist(value)">詩・童話・その他</button>
+        </div>
+      </div>
+
+      <div id="novel-list">
+          Click buttons upon to fetch rank list.
+      </div>
+
+    </div>
+  </body>
+</html>
