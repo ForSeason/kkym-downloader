@@ -181,22 +181,37 @@ async fn _download(novel: &Novel) -> Result<Option<Novel>, Box<dyn Error>> {
             let url = format!("https://kakuyomu.jp{url}");
             // let title = ep_el.select(&title_selector).last().unwrap().inner_html();
             thread_vec.push(tokio::spawn(async move {
-                let ep_page_resp = reqwest::get(&url).await?;
-                if ep_page_resp.status() != reqwest::StatusCode::OK {
-                    return Err(ep_page_resp.error_for_status().err().unwrap());
+                let mut retry = 5;
+                let mut ok = false;
+                while retry > 0 && !ok {
+                    let url = url.clone();
+                    match reqwest::get(&url).await {
+                        Ok(ep_page_resp) => {
+                            if ep_page_resp.status() != reqwest::StatusCode::OK {
+                                return Err(ep_page_resp.error_for_status().err().unwrap());
+                            }
+                            let content = ep_page_resp.text().await?;
+                            let ep: Episode;
+                            {
+                                let doc = Html::parse_document(&content);
+                                let main_selector = Selector::parse(".widget-episode").unwrap();
+                                let title_selector = Selector::parse(".widget-episodeTitle").unwrap();
+                                let content = doc.select(&main_selector).last().unwrap().html();
+                                let title = doc.select(&title_selector).last().unwrap().inner_html();
+                                let content = _make_content(content,title.clone());
+                                ep = Episode{title, content, url, number}
+                            }
+                            tsx.send(ep).await.unwrap();
+                            ok = true;
+                        }
+                        Err(err) => { 
+                            retry -= 1; 
+                            if retry < 1 { 
+                                return Err(err) 
+                            }
+                        }
+                    }
                 }
-                let content = ep_page_resp.text().await?;
-                let ep: Episode;
-                {
-                    let doc = Html::parse_document(&content);
-                    let main_selector = Selector::parse(".widget-episode").unwrap();
-                    let title_selector = Selector::parse(".widget-episodeTitle").unwrap();
-                    let content = doc.select(&main_selector).last().unwrap().html();
-                    let title = doc.select(&title_selector).last().unwrap().inner_html();
-                    let content = _make_content(content,title.clone());
-                    ep = Episode{title, content, url, number}
-                }
-                tsx.send(ep).await.unwrap();
                 Ok::<u8, reqwest::Error>(0)
             }));
         }
