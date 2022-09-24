@@ -12,6 +12,8 @@ use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 use serde::{Serialize, Deserialize};
 use epub_builder::{EpubBuilder, ZipLibrary, EpubContent, ReferenceType};
+use tauri::api::dialog::blocking::FileDialogBuilder;
+use tauri::api::path::download_dir;
 
 static FETCH_LIST_MUTEX:Mutex<i32> = Mutex::const_new(0);
 static DOWNLOAD_MUTEX:Mutex<i32> = Mutex::const_new(0);
@@ -231,6 +233,7 @@ async fn _download(novel: &Novel) -> Result<Option<Novel>, Box<dyn Error>> {
 }
 
 async fn _export_epub(novel: Novel) -> Result<(), Box<dyn Error>> {
+    // generate epub data
     let zip_library = ZipLibrary::new()?;
     let mut epub = EpubBuilder::new(zip_library)?;
     let mut epub = epub.metadata("author", novel.author.as_str())?
@@ -246,7 +249,12 @@ async fn _export_epub(novel: Novel) -> Result<(), Box<dyn Error>> {
     epub = epub.inline_toc();
     let mut data: Vec<u8> = vec![];
     epub.generate(&mut data)?;
+    // get epub path
     let filename = format!("{}.epub", novel.name);
+    let dialog = FileDialogBuilder::new().set_title("Set location...").set_file_name(filename.as_str()).set_directory(download_dir().unwrap());
+    let full_path = dialog.pick_folder().unwrap().to_str().unwrap().to_string();
+    let filename = format!("{}/{}", full_path, filename);
+    // get fp
     let mut fp = match File::open(&filename) {
         Ok(fp) => { fp }
         Err(_) => {
@@ -256,6 +264,7 @@ async fn _export_epub(novel: Novel) -> Result<(), Box<dyn Error>> {
             }
         }
     };
+    // write file
     fp.write(data.as_slice()).unwrap();
     Ok(())
 }
