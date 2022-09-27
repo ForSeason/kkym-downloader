@@ -3,13 +3,14 @@
     windows_subsystem = "windows"
 )]
 
+use std::time::Duration;
 use std::{vec, fs::File, io::Write, env, path::Path};
 use std::error::Error;
 
 use reqwest;
 use scraper::{Html, Selector};
-use tokio::sync::Mutex;
-use tokio::sync::mpsc;
+use tokio::sync::{Mutex, mpsc};
+use tokio::time::sleep;
 use serde::{Serialize, Deserialize};
 use epub_builder::{EpubBuilder, ZipLibrary, EpubContent, ReferenceType};
 use tauri::api::dialog::blocking::FileDialogBuilder;
@@ -112,7 +113,7 @@ async fn download(novel: Novel) -> String {
     }
 }
 
-// fetch monthly ranlist by type
+// fetch ranklist by type
 async fn _fetch_ranklist(novel_type: String, rank_time: String) -> Result<Vec<Novel>, Box<dyn Error>> {
     let resp = reqwest::get(format!("https://kakuyomu.jp/rankings/{novel_type}/{rank_time}")).await?;
     if resp.status() != reqwest::StatusCode::OK {
@@ -153,6 +154,7 @@ fn _parse_document(doc: String)-> Result<Vec<Novel>, Box<dyn Error>>  {
     Ok(novels)
 }
 
+// download novel by novel url
 async fn _download(novel: &Novel) -> Result<Option<Novel>, Box<dyn Error>> {
     let filename = format!("{}.epub", novel.name);
     let path = Path::new(&filename);
@@ -165,14 +167,12 @@ async fn _download(novel: &Novel) -> Result<Option<Novel>, Box<dyn Error>> {
         return Err(Box::from(novel_page_resp.error_for_status().err().unwrap() ));
 
     }
-    let mut thread_vec = Vec::new();
     let (sx, mut rx) = mpsc::channel(10);
     {
         // fetch novel detail page
         let content = novel_page_resp.text().await?;
         let doc = Html::parse_document(&content);
         let ep_selector = Selector::parse(".widget-toc-episode-episodeTitle").unwrap();
-        // let title_selector = Selector::parse(".widget-toc-episode-titleLabel").unwrap();
         
         // downlaod novel by chapter
         let mut number = 0;
@@ -181,8 +181,8 @@ async fn _download(novel: &Novel) -> Result<Option<Novel>, Box<dyn Error>> {
             let tsx = sx.clone();
             let url = ep_el.value().attr("href").unwrap().to_string();
             let url = format!("https://kakuyomu.jp{url}");
-            // let title = ep_el.select(&title_selector).last().unwrap().inner_html();
-            thread_vec.push(tokio::spawn(async move {
+            // async mutithread downloading
+            tokio::spawn(async move {
                 let mut retry = 5;
                 let mut ok = false;
                 while retry > 0 && !ok {
@@ -211,22 +211,22 @@ async fn _download(novel: &Novel) -> Result<Option<Novel>, Box<dyn Error>> {
                             if retry < 1 { 
                                 return Err(err) 
                             }
+                            sleep(Duration::from_millis(500)).await;
                         }
                     }
                 }
                 Ok::<u8, reqwest::Error>(0)
-            }));
+            });
         }
     }
-    // the thread would pending here if we don't drop the origin sender.
+
+    // the main thread would be pending here if we don't drop the origin sender.
     drop(sx);
     let mut ep_vec = vec![];
     while let Some(ep) = rx.recv().await {
         ep_vec.push(ep);
     }
-    for thread in thread_vec {
-        thread.await.unwrap()?;
-    }
+    // sort vec in ep order
     ep_vec.sort_by(|a, b| a.number.cmp(&b.number));
     let res = Novel { name: novel.name.clone(), author: novel.author.clone(), url: novel.url.clone(), eps: ep_vec };
     Ok(Some(res))

@@ -1,8 +1,8 @@
 [package]
 name = "novel_downloader"
-version = "0.0.0"
-description = "A Tauri App"
-authors = ["you"]
+version = "0.0.1"
+description = "A Tauri App for downloading kakuyomu novels"
+authors = ["forseason"]
 license = ""
 repository = ""
 edition = "2021"
@@ -21,7 +21,6 @@ tokio = { version = "*", features = ["full"] }
 reqwest = { version = "*", features = ["json"] }
 scraper = "0.13.0"
 epub-builder = { version = "*" }
-# futures = { version = "*" }
 
 [features]
 # by default Tauri runs in production mode
